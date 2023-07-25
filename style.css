@@ -1,0 +1,88 @@
+/* Button Styles */
+.keyword-linker-button {
+  display: inline-block;
+  background-color: #007cba;
+  color: #fff;
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 4px;
+  text-decoration: none;
+}
+
+.keyword-linker-button:hover {
+  background-color: #005f91;
+}
+
+/* Section Styles */
+.keyword-linker-section {
+  margin-bottom: 20px;
+}
+
+.keyword-linker-section h2 {
+  margin-top: 0;
+}
+
+.keyword-linker-section p {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+/* Pagination Styles */
+.pagination {
+  margin-top: 20px;
+}
+
+.pagination a {
+  display: inline-block;
+  margin-right: 10px;
+  color: #007cba;
+  text-decoration: none;
+}
+
+.pagination a:hover {
+  text-decoration: underline;
+}
+
+.pagination {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.pagination .current-page {
+  font-weight: bold;
+  padding: 4px 8px;
+  background-color: #333;
+  color: #fff;
+  margin: 0 2px;
+  border-radius: 4px;
+}
+
+.pagination a {
+  display: inline-block;
+  padding: 4px 8px;
+  background-color: #f4f4f4;
+  color: #333;
+  margin: 0 2px;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.pagination a:hover {
+  background-color: #ddd;
+}
+
+.pagination .button-secondary {
+  background-color: #f4f4f4;
+  color: #333;
+  border-color: #bbb;
+}
+
+.pagination .button-secondary:hover {
+  background-color: #ddd;
+  border-color: #999;
+}
+form.delete-group {
+        display: inline-block;
+    vertical-align: middle;
+    margin-right: 15px;
+}
