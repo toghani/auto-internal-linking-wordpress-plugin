@@ -2,13 +2,14 @@
 /*
 Plugin Name: لینک سازی خودکار
 Description: A WordPress plugin to add keywords and associated links with group ID.
-Version: 1.0
+Version: 1.5
 Author: Mohammad ali Toghani
 Author URI: https://toghani.com
 */
 
 // Enqueue the plugin's CSS file
-function keyword_linker_enqueue_styles() {
+function keyword_linker_enqueue_styles()
+{
     wp_enqueue_style('keyword-linker-styles', plugin_dir_url(__FILE__) . 'style.css');
     wp_enqueue_style('select2-styles', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css', array(), '4.0.13');
     wp_enqueue_script('select2-script', 'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js', array('jquery'), '4.0.13', true);
@@ -17,7 +18,8 @@ add_action('admin_enqueue_scripts', 'keyword_linker_enqueue_styles');
 
 
 // Create custom database table on plugin activation
-function keyword_linker_activate() {
+function keyword_linker_activate()
+{
     global $wpdb;
     $table_name = $wpdb->prefix . 'keyword_links';
 
@@ -38,7 +40,8 @@ function keyword_linker_activate() {
 register_activation_hook(__FILE__, 'keyword_linker_activate');
 
 // Add menu item to the admin dashboard
-function keyword_linker_menu() {
+function keyword_linker_menu()
+{
     add_menu_page(
         'لینک سازی خودکار',
         'لینک سازی خودکار',
@@ -51,7 +54,8 @@ function keyword_linker_menu() {
 }
 add_action('admin_menu', 'keyword_linker_menu');
 
-function keyword_linker_page() {
+function keyword_linker_page()
+{
     if (!current_user_can('manage_options')) {
         wp_die(__('You do not have sufficient permissions to access this page.'));
     }
@@ -166,8 +170,8 @@ function keyword_linker_page() {
             </table>
             <p class="submit"><input type="submit" name="submit" id="submit" class="button-primary" value="ذخیره کردن"></p>
         </form>';
-    
-    
+
+
     $total_groups = $wpdb->get_var("SELECT COUNT(DISTINCT group_id) FROM $table_name");
 
     $total_pages = ceil($total_groups / $groups_per_page);
@@ -189,7 +193,7 @@ function keyword_linker_page() {
                         <button type="submit" name="delete_group" class="button-secondary">حذف گروه</button>
                     </form>
                 </h2>
-                <p><strong>لینک گروه:</strong><a href="' . urldecode($group_link) . '" target="_blank">'. urldecode($group_link) .'</a></p>';
+                <p><strong>لینک گروه:</strong><a href="' . urldecode($group_link) . '" target="_blank">' . urldecode($group_link) . '</a></p>';
 
             echo '
                 <table class="wp-list-table widefat fixed striped">
@@ -269,67 +273,86 @@ function keyword_linker_page() {
 
 
 
-function keyword_linker_content_filter($content) {
+
+
+function keyword_linker_content_filter($content)
+{
     global $wpdb;
     $table_name = $wpdb->prefix . 'keyword_links';
+    $ignore_tags = ["h1", "h2", "h3", "h4", "h5", "h6", "a", "span"];
 
     $keywords = $wpdb->get_results("SELECT * FROM $table_name ORDER BY CHAR_LENGTH(keyword) DESC");
 
-    $linked_keywords = array(); // Keep track of linked keywords for each group
+    $linked_keywords_group = array();
+    $linked_keywords = array();
 
-    foreach ($keywords as $keyword) {
-        if (in_array($keyword->group_id, $linked_keywords)) {
-            continue; // Skip if a keyword from the same group has already been linked
+    $new_content = "";
+    $state = "Content";
+    $next_state = "Content";
+    $tag = "";
+    $subcontent = "";
+    for ($i = 0; $i < strlen($content); $i++) {
+        $character = $content[$i];
+
+        if ($state == "Content") {
+            if ($character == '<')
+                $next_state = "Tag";
+            else
+                $subcontent = $subcontent . $character;
+        } else if ($state == "Tag") {
+            if ($character == ' ' || $character == '/' || $character == '\\')
+                $next_state = "Tag_Content";
+            else if ($character == '>')
+                $next_state = "Content";
+            else
+                $tag = $tag . $character;
+        } else if ($state == "Tag_Content" && $character == '>') {
+            $next_state = "Content";
         }
 
-        $keyword_pattern = '/(?<!\pL)' . preg_quote($keyword->keyword, '/') . '(?!\pL)/ui';
+        if (($next_state != "Content" || $state != "Content") || ($state == "Content" && $i == strlen($content) - 1)) {
+            if ($state == "Content" && !in_array($tag, $ignore_tags)) {
+                foreach ($keywords as $keyword) {
+                 
+                    $keyword_pattern = '/(?<!\pL)' . preg_quote($keyword->keyword, '/') . '(?!\pL)/ui';
 
-        if (preg_match($keyword_pattern, $content)) {
-            // Check if the keyword or part of it is inside an HTML <a> tag
-            $keyword_in_tag_pattern = '/<a\b[^>]*>(?=.*' . preg_quote($keyword->keyword, '/') . ').*<\/a>/i';
-            if (preg_match($keyword_in_tag_pattern, $content)) {
-                continue; // Skip linking if keyword or part of it is already inside an <a> tag
-            }
+                    if (preg_match($keyword_pattern, $subcontent)) {
+                        $keyword_in_tag_pattern = '/<a\b[^>]*>(?=.*' . preg_quote($keyword->keyword, '/') . ').*<\/a>/i';
+                        if (preg_match($keyword_in_tag_pattern, $subcontent)) {
+                            continue;
+                        }
 
-            // Extract all alt attributes from image tags
-            $img_alt_attributes = array();
-            $img_pattern = '/<img\b[^>]*?(alt=(["\'])(.*?)\2)/i';
-            preg_match_all($img_pattern, $content, $matches, PREG_SET_ORDER);
-            foreach ($matches as $match) {
-                $alt_text = $match[3];
-                $img_alt_attributes[] = $alt_text;
-            }
+                        if (!empty($keyword->link) && !in_array($keyword->group_id, $linked_keywords_group) && !in_array($keyword->keyword, $linked_keywords)) {
+                            $replacement = '<a href="' . urldecode(beauty_link($keyword->link)) . '" target="_blank">' . urldecode($keyword->keyword) . '</a>';
+                            $subcontent = preg_replace($keyword_pattern, $replacement, $subcontent, 1);
+                            $linked_keywords_group[] = $keyword->group_id;
+                            $linked_keywords[] = $keyword->keyword;
 
-            // Check if the keyword is found in any of the alt attributes
-            $keyword_found_in_alt = false;
-            foreach ($img_alt_attributes as $alt_text) {
-                if (stripos($alt_text, $keyword->keyword) !== false) {
-                    $keyword_found_in_alt = true;
-                    break;
+                        }
+                    }
+                    
                 }
+                $tag = "";
             }
-
-            if ($keyword_found_in_alt) {
-                continue; // Skip linking if keyword is found in the alt attribute of an image tag
-            }
-
-            // Link the keyword if it exists in the content
-            if (!empty($keyword->link)) {
-                $replacement = '<a href="' . $keyword->link . '" target="_blank">' . $keyword->keyword . '</a>';
-                $content = preg_replace($keyword_pattern, $replacement, $content, 1);
-                $linked_keywords[] = $keyword->group_id; // Mark the group as linked
-            }
+            if ($state == "Content" && $i == strlen($content) - 1)
+                $new_content = $new_content . $subcontent;
+            else
+                $new_content = $new_content . $subcontent . $character;
+            $subcontent = "";
         }
+
+        $state = $next_state;
     }
 
-    return $content;
+    return $new_content;
+    
 }
-
 
 
 add_filter('the_content', 'keyword_linker_content_filter');
 
-function run_keyword_linker_for_category_description($content) {
+function run_keyword_linker_for_category_description($content)
+{
     if (is_product_category()) {
         $filtered_content = keyword_linker_content_filter($content);
         return $filtered_content;
@@ -339,9 +362,9 @@ function run_keyword_linker_for_category_description($content) {
 }
 add_filter('term_description', 'run_keyword_linker_for_category_description');
 
-function run_keyword_linker_for_comments($comment_text) {
+function run_keyword_linker_for_comments($comment_text)
+{
     $filtered_comment_text = keyword_linker_content_filter($comment_text);
     return $filtered_comment_text;
 }
 add_filter('comment_text', 'run_keyword_linker_for_comments');
-
