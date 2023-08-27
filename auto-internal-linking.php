@@ -273,6 +273,14 @@ function keyword_linker_page()
 
 
 
+function beauty_link($url)
+{
+	$url = urldecode($url);
+	if($url != get_home_url()) {
+	$url = str_replace(get_home_url(), '', $url);
+	}
+	return $url;
+}
 
 
 function keyword_linker_content_filter($content)
